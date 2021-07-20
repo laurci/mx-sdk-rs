@@ -45,4 +45,88 @@ pub trait Forwarder:
 		};
 		self.send().direct_egld(to, amount, data);
 	}
+
+	#[payable("EGLD")]
+	#[endpoint]
+	fn accept_egld_transfer_nft(
+		&self,
+		nft_id: TokenIdentifier,
+		nft_nonce: u64,
+		nft_amount: Self::BigUint,
+	) -> SCResult<()> {
+		require!(nft_amount != 0, "Cannot transfer zero amount");
+		let balance = self.blockchain().get_esdt_balance(
+			&self.blockchain().get_sc_address(),
+			&nft_id,
+			nft_nonce,
+		);
+		require!(balance >= nft_amount, "Not enough NFT balance");
+
+		SCResult::from_result(self.send().direct_esdt_nft_execute(
+			&self.blockchain().get_caller(),
+			&nft_id,
+			nft_nonce,
+			&nft_amount,
+			0,
+			&[],
+			&ArgBuffer::new(),
+		))
+	}
+
+	#[payable("*")]
+	#[endpoint]
+	fn accept_anything_transfer_nft(
+		&self,
+		nft_id: TokenIdentifier,
+		nft_nonce: u64,
+		nft_amount: Self::BigUint,
+	) -> SCResult<()> {
+		require!(nft_amount != 0, "Cannot transfer zero amount");
+		let balance = self.blockchain().get_esdt_balance(
+			&self.blockchain().get_sc_address(),
+			&nft_id,
+			nft_nonce,
+		);
+		require!(balance >= nft_amount, "Not enough NFT balance");
+
+		SCResult::from_result(self.send().direct_esdt_nft_execute(
+			&self.blockchain().get_caller(),
+			&nft_id,
+			nft_nonce,
+			&nft_amount,
+			0,
+			&[],
+			&ArgBuffer::new(),
+		))
+	}
+
+	#[payable("*")]
+	#[endpoint]
+	fn accept_anything_with_payable_annotations_transfer_nft(
+		&self,
+		#[payment_token] _payment_token: TokenIdentifier,
+		#[payment_nonce] _payment_nonce: u64,
+		#[payment_amount] _payment_amount: Self::BigUint,
+		nft_id: TokenIdentifier,
+		nft_nonce: u64,
+		nft_amount: Self::BigUint,
+	) -> SCResult<()> {
+		require!(nft_amount != 0, "Cannot transfer zero amount");
+		let balance = self.blockchain().get_esdt_balance(
+			&self.blockchain().get_sc_address(),
+			&nft_id,
+			nft_nonce,
+		);
+		require!(balance >= nft_amount, "Not enough NFT balance");
+
+		SCResult::from_result(self.send().direct_esdt_nft_execute(
+			&self.blockchain().get_caller(),
+			&nft_id,
+			nft_nonce,
+			&nft_amount,
+			0,
+			&[],
+			&ArgBuffer::new(),
+		))
+	}
 }

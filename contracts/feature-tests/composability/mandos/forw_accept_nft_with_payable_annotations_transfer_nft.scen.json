@@ -1,0 +1,81 @@
+{
+    "name": "sell nft from contract",
+    "steps": [
+        {
+            "step": "setState",
+            "accounts": {
+                "address:creator": {
+                    "nonce": "0",
+                    "balance": "0",
+                    "storage": {}
+                },
+                "address:a_user": {
+                    "nonce": "0",
+                    "balance": "2000",
+                    "esdt": {
+                        "str:FUNG-abcdef": "1000",
+                        "str:NFT-abcdef": {
+                            "instances": [
+                                {
+                                    "nonce": "2",
+                                    "balance": "4"
+                                },
+                                {
+                                    "nonce": "3",
+                                    "balance": "1"
+                                }
+                            ]
+                        }
+                    },
+                    "storage": {}
+                },
+                "sc:forwarder": {
+                    "nonce": "0",
+                    "balance": "0",
+                    "esdt": {
+                        "str:NFT-abcdef": {
+                            "instances": [
+                                {
+                                    "nonce": "1",
+                                    "balance": "1",
+                                    "royalties": "2,500",
+                                    "creator": "address:creator"
+                                }
+                            ]
+                        }
+                    },
+                    "storage": {},
+                    "code": "file:../forwarder/output/forwarder.wasm"
+                }
+            }
+        },
+        {
+            "step": "scCall",
+            "txId": "accept_anything_with_payable_annotations_transfer_nft",
+            "tx": {
+                "from": "address:a_user",
+                "to": "sc:forwarder",
+                "value": "0",
+                "function": "accept_anything_with_payable_annotations_transfer_nft",
+                "esdt": {
+                    "tokenIdentifier": "str:NFT-abcdef",
+                    "value": "1",
+                    "nonce": "2"
+                },
+                "arguments": [
+                    "str:NFT-abcdef",
+                    "1",
+                    "1"
+                ],
+                "gasLimit": "50,000,000",
+                "gasPrice": "0"
+            },
+            "expect": {
+                "status": "0",
+                "message": "",
+                "gas": "*",
+                "refund": "*"
+            }
+        }
+    ]
+}
