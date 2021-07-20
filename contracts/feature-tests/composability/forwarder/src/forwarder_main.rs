@@ -129,4 +129,64 @@ pub trait Forwarder:
 			&ArgBuffer::new(),
 		))
 	}
+
+    #[payable("EGLD")]
+    #[endpoint]
+    fn accept_egld_check_annotations_call_value(
+        &self,
+        #[payment_token] annotation_payment_token: TokenIdentifier,
+        #[payment_nonce] annotation_payment_nonce: u64,
+        #[payment_amount] annotation_payment_amount: Self::BigUint,
+    ) -> SCResult<()> {
+        let (call_value_payment_amount, call_value_payment_token) =
+            self.call_value().payment_token_pair();
+        let call_value_payment_nonce = self.call_value().esdt_token_nonce();
+        require!(
+            call_value_payment_token == TokenIdentifier::egld(),
+            "Call value payment token is not EGLD"
+        );
+        require!(
+            annotation_payment_token == TokenIdentifier::egld(),
+            "Annotation payment token is not EGLD"
+        );
+        require!(
+            call_value_payment_nonce == 0,
+            "Call value payment nonce is not 0"
+        );
+        require!(
+            annotation_payment_nonce == 0,
+            "Annotation payment nonce is not 0"
+        );
+        require!(
+            annotation_payment_amount == call_value_payment_amount,
+            "Payment amounts differ"
+        );
+        Ok(())
+    }
+
+    #[payable("*")]
+    #[endpoint]
+    fn accept_anything_check_annotations_call_value(
+        &self,
+        #[payment_token] annotation_payment_token: TokenIdentifier,
+        #[payment_nonce] annotation_payment_nonce: u64,
+        #[payment_amount] annotation_payment_amount: Self::BigUint,
+    ) -> SCResult<()> {
+        let (call_value_payment_amount, call_value_payment_token) =
+            self.call_value().payment_token_pair();
+        let call_value_payment_nonce = self.call_value().esdt_token_nonce();
+        require!(
+            call_value_payment_token == annotation_payment_token,
+            "Payment tokens differs"
+        );
+        require!(
+            call_value_payment_nonce == annotation_payment_nonce,
+            "Payment nonces differs"
+        );
+        require!(
+            call_value_payment_amount == annotation_payment_amount,
+            "Payment amounts differs"
+        );
+        Ok(())
+    }
 }
