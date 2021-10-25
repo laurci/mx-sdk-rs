@@ -163,6 +163,12 @@ impl ManagedBufferApi for crate::ArwenApiImpl {
     fn mb_eq(&self, handle1: Handle, handle2: Handle) -> bool {
         unsafe { mBufferEq(handle1, handle2) > 0 }
     }
+
+    fn thingy(&self) {
+        unsafe {
+            unsafe_buffer::do_thingy();
+        }
+    }
 }
 
 pub(crate) unsafe fn unsafe_buffer_load_address(address_handle: Handle) -> *const u8 {

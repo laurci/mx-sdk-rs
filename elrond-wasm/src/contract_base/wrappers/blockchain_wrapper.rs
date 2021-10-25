@@ -261,4 +261,8 @@ where
 
         roles
     }
+
+    pub fn do_thingy(&self) {
+        self.api.thingy();
+    }
 }

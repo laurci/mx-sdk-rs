@@ -22,4 +22,9 @@ pub trait Adder {
 
         Ok(())
     }
+
+    #[endpoint]
+    fn do_thingy(&self) {
+        self.blockchain().do_thingy();
+    }
 }

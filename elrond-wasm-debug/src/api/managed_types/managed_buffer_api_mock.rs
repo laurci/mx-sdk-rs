@@ -113,4 +113,6 @@ impl ManagedBufferApi for DebugApi {
         let bytes2 = managed_types.managed_buffer_map.get(handle2);
         bytes1 == bytes2
     }
+
+    fn thingy(&self) {}
 }
