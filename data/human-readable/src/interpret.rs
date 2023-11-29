@@ -1,25 +1,26 @@
 use std::{error::Error, fmt::Display};
 
 use crate::multiversx_sc::abi::{TypeContents, TypeDescription};
-use multiversx_sc_meta::abi_json::ContractAbiJson;
-use multiversx_sc_scenario::num_bigint::BigUint;
+use multiversx_sc_scenario::{multiversx_sc::abi::ContractAbi, num_bigint::BigUint};
 
 use crate::{AnyValue, SingleValue::UnsignedNumber};
 
-pub fn interpret_value_according_to_abi(
+pub fn decode_human_readable_value(
     input: &str,
     type_name: &str,
-    contract_abi: &ContractAbiJson, // TODO: will need to convert to high-level ContractAbi first, this is just a prototype
+    contract_abi: &ContractAbi,
 ) -> Result<AnyValue, Box<dyn Error>> {
-    let type_description = if let Some(type_description_json) = contract_abi.types.get(type_name) {
-        type_description_json.to_type_description(type_name)
-    } else {
-        TypeDescription {
-            docs: Vec::new(),
-            name: type_name.to_string(),
-            contents: TypeContents::NotSpecified,
-        }
-    };
+    let type_description =
+        if let Some(type_description) = contract_abi.type_descriptions.0.get(type_name) {
+            type_description.to_owned()
+        } else {
+            TypeDescription {
+                docs: Vec::new(),
+                name: type_name.to_string(),
+                contents: TypeContents::NotSpecified,
+            }
+        };
+
     interpret_any_value(input, &type_description)
 }
 
