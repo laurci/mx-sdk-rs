@@ -3,10 +3,11 @@ use std::{error::Error, fmt::Display};
 use crate::{
     format::HumanReadableValue,
     multiversx_sc::abi::{TypeContents, TypeDescription},
-    SingleValue,
+    SingleValue, StructField, StructValue,
 };
+use bech32::FromBase32;
 use multiversx_sc_scenario::{
-    multiversx_sc::abi::ContractAbi,
+    multiversx_sc::abi::{ContractAbi, StructFieldDescription},
     num_bigint::{BigInt, BigUint},
 };
 
@@ -28,22 +29,23 @@ pub fn decode_human_readable_value(
             }
         };
 
-    decode_any_value(input, &type_description)
+    decode_any_value(input, &type_description, &contract_abi)
 }
 
 pub fn decode_any_value(
     input: &HumanReadableValue,
     type_description: &TypeDescription,
+    contract_abi: &ContractAbi,
 ) -> Result<AnyValue, Box<dyn Error>> {
     match &type_description.contents {
-        TypeContents::NotSpecified => interpret_single_value(input, type_description.name.as_str()),
+        TypeContents::NotSpecified => decode_single_value(input, type_description.name.as_str()),
         TypeContents::Enum(_) => todo!(),
-        TypeContents::Struct(_) => todo!(),
+        TypeContents::Struct(fields) => decode_struct(input, &fields, &contract_abi),
         TypeContents::ExplicitEnum(_) => panic!("not supported"),
     }
 }
 
-fn interpret_single_value(
+fn decode_single_value(
     input: &HumanReadableValue,
     type_name: &str,
 ) -> Result<AnyValue, Box<dyn Error>> {
@@ -66,7 +68,7 @@ fn interpret_single_value(
             let value = number_value.to_string().parse::<BigInt>()?;
             Ok(AnyValue::SingleValue(SingleValue::SignedNumber(value)))
         },
-        "ManagedBuffer" | "Address" => {
+        "ManagedBuffer" => {
             let array_value = input
                 .get_value()
                 .as_array()
@@ -85,6 +87,27 @@ fn interpret_single_value(
 
             Ok(AnyValue::SingleValue(SingleValue::Bytes(bytes.into())))
         },
+        "Address" => {
+            let str_value = input
+                .get_value()
+                .as_str()
+                .ok_or_else(|| Box::new(InterpretError("expected string value")))?;
+
+            let (_, address_bytes_u5, _) = bech32::decode(str_value)
+                .map_err(|_| Box::new(InterpretError("failed to parse address")))?;
+            let address_bytes = Vec::<u8>::from_base32(&address_bytes_u5)
+                .map_err(|_| Box::new(InterpretError("failed to parse address")))?;
+
+            if address_bytes.len() != 32 {
+                return Err(Box::new(InterpretError(
+                    "Invalid address length after decoding",
+                )));
+            }
+
+            Ok(AnyValue::SingleValue(SingleValue::Bytes(
+                address_bytes.into(),
+            )))
+        },
         "bool" => {
             let bool_value = input
                 .get_value()
@@ -95,6 +118,27 @@ fn interpret_single_value(
         },
         _ => Err(Box::new(InterpretError("unknown type"))),
     }
+}
+
+pub fn decode_struct(
+    input: &HumanReadableValue,
+    fields: &Vec<StructFieldDescription>,
+    contract_abi: &ContractAbi,
+) -> Result<AnyValue, Box<dyn Error>> {
+    let mut field_values: Vec<StructField> = vec![];
+
+    for field in fields.iter() {
+        let value = input
+            .child(&field.name)
+            .ok_or_else(|| Box::new(InterpretError("missing field")))?;
+        let value = decode_human_readable_value(&value, &field.field_type, &contract_abi)?;
+        field_values.push(StructField {
+            name: field.name.clone(),
+            value,
+        });
+    }
+
+    Ok(AnyValue::Struct(StructValue(field_values)))
 }
 
 #[derive(Debug)]

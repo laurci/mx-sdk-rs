@@ -1922,6 +1922,7 @@ dependencies = [
 name = "multiversx-sc-codec-human-readable"
 version = "0.1.0"
 dependencies = [
+ "bech32",
  "multiversx-sc-meta",
  "multiversx-sc-scenario",
  "serde_json",
