@@ -7,7 +7,7 @@ use crate::{
 };
 use bech32::FromBase32;
 use multiversx_sc_scenario::{
-    multiversx_sc::abi::{ContractAbi, StructFieldDescription},
+    multiversx_sc::abi::{ContractAbi, EnumVariantDescription, StructFieldDescription},
     num_bigint::{BigInt, BigUint},
 };
 
@@ -39,7 +39,7 @@ pub fn decode_any_value(
 ) -> Result<AnyValue, Box<dyn Error>> {
     match &type_description.contents {
         TypeContents::NotSpecified => decode_single_value(input, type_description.name.as_str()),
-        TypeContents::Enum(_) => todo!(),
+        TypeContents::Enum(variants) => decode_enum(input, &variants, &contract_abi),
         TypeContents::Struct(fields) => decode_struct(input, &fields, &contract_abi),
         TypeContents::ExplicitEnum(_) => panic!("not supported"),
     }
@@ -149,6 +149,33 @@ pub fn decode_struct(
     }
 
     Ok(AnyValue::Struct(StructValue(field_values)))
+}
+
+pub fn decode_enum(
+    input: &HumanReadableValue,
+    variants: &Vec<EnumVariantDescription>,
+    contract_abi: &ContractAbi,
+) -> Result<AnyValue, Box<dyn Error>> {
+    if input.get_value().is_string() {
+        let discriminant_name = input.get_value().as_str().unwrap();
+        let variant = variants
+            .iter()
+            .find(|el| el.name == discriminant_name)
+            .ok_or_else(|| Box::new(InterpretError("enum variant not found")))?;
+
+        if !variant.is_tuple_variant() {
+            return Err(Box::new(InterpretError(
+                "enum variant is not a tuple variant",
+            )));
+        }
+
+        return Ok(AnyValue::Enum(Box::new(crate::EnumVariant {
+            discriminant: variant.discriminant,
+            value: AnyValue::None,
+        })));
+    }
+
+    todo!("non-string discriminants not supported yet");
 }
 
 #[derive(Debug)]
