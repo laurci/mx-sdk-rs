@@ -87,6 +87,16 @@ fn decode_single_value(
 
             Ok(AnyValue::SingleValue(SingleValue::Bytes(bytes.into())))
         },
+        "string" | "utf-8 string" => {
+            let str_value = input
+                .get_value()
+                .as_str()
+                .ok_or_else(|| Box::new(InterpretError("expected string value")))?;
+
+            Ok(AnyValue::SingleValue(SingleValue::String(
+                str_value.to_string(),
+            )))
+        },
         "Address" => {
             let str_value = input
                 .get_value()

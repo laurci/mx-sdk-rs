@@ -48,6 +48,17 @@ fn serialize_single_value_managed_buffer() {
 }
 
 #[test]
+fn serialize_single_value_string() {
+    let abi: ContractAbi = deserialize_abi_from_json(EMPTY_ABI_JSON).unwrap().into();
+
+    let value = r#""hello""#.parse::<HumanReadableValue>().unwrap();
+
+    let result = decode_human_readable_value(&value, "utf-8 string", &abi).unwrap();
+    let serialized = top_encode_to_vec_u8(&result).unwrap();
+    assert_eq!(serialized, "hello".as_bytes().to_vec());
+}
+
+#[test]
 fn serialize_single_value_bool() {
     let abi: ContractAbi = deserialize_abi_from_json(EMPTY_ABI_JSON).unwrap().into();
 
