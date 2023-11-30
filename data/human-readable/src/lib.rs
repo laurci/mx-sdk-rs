@@ -1,6 +1,7 @@
+pub mod format;
 mod interpret;
 mod value;
 
-use multiversx_sc_scenario::multiversx_sc;
 pub use interpret::*;
+use multiversx_sc_scenario::multiversx_sc;
 pub use value::*;
