@@ -1,6 +1,6 @@
 use multiversx_sc_codec_human_readable::{
-    decode_human_readable_value, encode_human_readable_value, format::HumanReadableValue, AnyValue,
-    EnumVariant, SingleValue, StructField, StructValue,
+    decode_human_readable_value, default_value_for_abi_type, encode_human_readable_value,
+    format::HumanReadableValue, AnyValue, EnumVariant, SingleValue, StructField, StructValue,
 };
 use multiversx_sc_meta::abi_json::deserialize_abi_from_json;
 use multiversx_sc_scenario::multiversx_sc::{abi::ContractAbi, codec::top_encode_to_vec_u8};
@@ -127,6 +127,65 @@ const ABI_JSON: &str = r#"{
                             "type": "TwoU8s"
                         }
                     ]
+                }
+            ]
+        },
+        "EnumWithDiscriminantOnlyDefault": {
+            "type": "enum",
+            "variants": [
+                {
+                    "name": "First",
+                    "discriminant": 0
+                },
+                {
+                    "name": "Second",
+                    "discriminant": 1
+                }
+            ]
+        },
+        "EnumWithStructDefault": {
+            "type": "enum",
+            "variants": [
+                {
+                    "name": "First",
+                    "discriminant": 0,
+                    "fields": [
+                        {
+                            "name": "first",
+                            "type": "u8"
+                        },
+                        {
+                            "name": "second",
+                            "type": "u8"
+                        }
+                    ]
+                },
+                {
+                    "name": "Second",
+                    "discriminant": 1
+                }
+            ]
+        },
+        "EnumWithTupleValuesDefault": {
+            "type": "enum",
+            "variants": [
+                {
+                    "name": "First",
+                    "discriminant": 0,
+                    "fields": [
+                        {
+                            "name": "0",
+                            "type": "u8"
+                        },
+                        {
+                            "name": "1",
+                            "type": "u8"
+                        }
+                    ]
+                },
+                {
+                    "name": "Second",
+                    "discriminant": 1
                 }
             ]
         }
@@ -337,4 +396,76 @@ fn deserialize_enum_tuple_with_values_and_struct() {
         result.to_string(),
         r#"{"Second":[1,2,{"first":1,"second":2}]}"#
     );
+}
+
+#[test]
+fn default_enum_discriminant_only() {
+    let abi: ContractAbi = deserialize_abi_from_json(ABI_JSON).unwrap().into();
+
+    let value = default_value_for_abi_type("EnumWithDiscriminantOnlyDefault", &abi).unwrap();
+
+    let AnyValue::Enum(variant) = value else {
+        panic!("Expected enum variant");
+    };
+    assert_eq!(variant.discriminant, 0);
+    match variant.value {
+        AnyValue::None => {},
+        _ => panic!("Expected value none"),
+    };
+}
+
+#[test]
+fn default_enum_with_struct() {
+    let abi: ContractAbi = deserialize_abi_from_json(ABI_JSON).unwrap().into();
+
+    let value = default_value_for_abi_type("EnumWithStructDefault", &abi).unwrap();
+
+    let AnyValue::Enum(variant) = value else {
+        panic!("Expected enum variant");
+    };
+    assert_eq!(variant.discriminant, 0);
+    let AnyValue::Struct(StructValue(fields)) = variant.value else {
+        panic!("Expected struct value");
+    };
+    assert_eq!(fields.len(), 2);
+
+    assert_eq!(fields[0].name, "first");
+    let AnyValue::SingleValue(SingleValue::UnsignedNumber(num)) = &fields[0].value else {
+        panic!("Expected unsigned number");
+    };
+    assert_eq!(*num, 0u8.into());
+
+    assert_eq!(fields[1].name, "second");
+    let AnyValue::SingleValue(SingleValue::UnsignedNumber(num)) = &fields[1].value else {
+        panic!("Expected unsigned number");
+    };
+    assert_eq!(*num, 0u8.into());
+}
+
+#[test]
+fn default_enum_with_tuple_values() {
+    let abi: ContractAbi = deserialize_abi_from_json(ABI_JSON).unwrap().into();
+
+    let value = default_value_for_abi_type("EnumWithTupleValuesDefault", &abi).unwrap();
+
+    let AnyValue::Enum(variant) = value else {
+        panic!("Expected enum variant");
+    };
+    assert_eq!(variant.discriminant, 0);
+    let AnyValue::Struct(StructValue(fields)) = variant.value else {
+        panic!("Expected struct value");
+    };
+    assert_eq!(fields.len(), 2);
+
+    assert_eq!(fields[0].name, "0");
+    let AnyValue::SingleValue(SingleValue::UnsignedNumber(num)) = &fields[0].value else {
+        panic!("Expected unsigned number");
+    };
+    assert_eq!(*num, 0u8.into());
+
+    assert_eq!(fields[1].name, "1");
+    let AnyValue::SingleValue(SingleValue::UnsignedNumber(num)) = &fields[1].value else {
+        panic!("Expected unsigned number");
+    };
+    assert_eq!(*num, 0u8.into());
 }
