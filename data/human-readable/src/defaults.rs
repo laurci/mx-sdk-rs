@@ -1,11 +1,11 @@
 use std::{error::Error, fmt::Display};
 
 use multiversx_sc_scenario::{
-    multiversx_sc::abi::{ContractAbi, TypeContents, TypeDescription},
+    multiversx_sc::abi::{ContractAbi, StructFieldDescription, TypeContents, TypeDescription},
     num_bigint::{BigInt, BigUint},
 };
 
-use crate::{AnyValue, SingleValue};
+use crate::{AnyValue, SingleValue, StructField, StructValue};
 
 pub fn default_value_for_abi_type(
     type_name: &str,
@@ -27,14 +27,14 @@ pub fn default_value_for_abi_type(
 
 pub fn default_value_for_any_value(
     type_description: &TypeDescription,
-    _contract_abi: &ContractAbi,
+    contract_abi: &ContractAbi,
 ) -> Result<AnyValue, Box<dyn Error>> {
     match &type_description.contents {
         TypeContents::NotSpecified => {
             default_value_for_single_value(type_description.name.as_str())
         },
         TypeContents::Enum(_variants) => panic!("not supported"),
-        TypeContents::Struct(_fields) => panic!("not supported"),
+        TypeContents::Struct(fields) => default_value_for_struct(&fields, contract_abi),
         TypeContents::ExplicitEnum(_) => panic!("not supported"),
     }
 }
@@ -56,6 +56,23 @@ pub fn default_value_for_single_value(type_name: &str) -> Result<AnyValue, Box<d
 
         _ => Err(Box::new(DefaultValueError("unknown type"))),
     }
+}
+
+pub fn default_value_for_struct(
+    fields: &Vec<StructFieldDescription>,
+    contract_abi: &ContractAbi,
+) -> Result<AnyValue, Box<dyn Error>> {
+    let mut field_values: Vec<StructField> = vec![];
+
+    for field in fields.iter() {
+        let value = default_value_for_abi_type(&field.field_type, &contract_abi)?;
+        field_values.push(StructField {
+            name: field.name.clone(),
+            value,
+        });
+    }
+
+    Ok(AnyValue::Struct(StructValue(field_values)))
 }
 
 #[derive(Debug)]

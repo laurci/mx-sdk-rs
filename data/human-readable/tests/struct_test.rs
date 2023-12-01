@@ -1,6 +1,6 @@
 use multiversx_sc_codec_human_readable::{
-    decode_human_readable_value, encode_human_readable_value, format::HumanReadableValue, AnyValue,
-    SingleValue, StructField, StructValue,
+    decode_human_readable_value, default_value_for_abi_type, encode_human_readable_value,
+    format::HumanReadableValue, AnyValue, SingleValue, StructField, StructValue,
 };
 use multiversx_sc_meta::abi_json::deserialize_abi_from_json;
 use multiversx_sc_scenario::multiversx_sc::{abi::ContractAbi, codec::top_encode_to_vec_u8};
@@ -78,6 +78,31 @@ fn deserialize_struct_two_u8s() {
 }
 
 #[test]
+fn default_struct_simple() {
+    let abi: ContractAbi = deserialize_abi_from_json(ABI_JSON).unwrap().into();
+
+    let AnyValue::Struct(struct_value) = default_value_for_abi_type("TwoU8s", &abi).unwrap() else {
+        panic!("Expected default value to be a SingleValue::UnsignedNumber")
+    };
+    assert_eq!(struct_value.0.len(), 2);
+
+    let first_field = struct_value.0.get(0).unwrap();
+    assert_eq!(first_field.name, "first");
+    let AnyValue::SingleValue(SingleValue::UnsignedNumber(first_value)) = &first_field.value else {
+        panic!("Expected default value to be a SingleValue::UnsignedNumber")
+    };
+    assert_eq!(*first_value, 0u8.into());
+
+    let second_field = struct_value.0.get(1).unwrap();
+    assert_eq!(second_field.name, "second");
+    let AnyValue::SingleValue(SingleValue::UnsignedNumber(second_value)) = &second_field.value
+    else {
+        panic!("Expected default value to be a SingleValue::UnsignedNumber")
+    };
+    assert_eq!(*second_value, 0u8.into());
+}
+
+#[test]
 fn serialize_struct_nested() {
     let abi: ContractAbi = deserialize_abi_from_json(ABI_JSON).unwrap().into();
 
@@ -132,4 +157,46 @@ fn deserialize_struct_nested() {
         result.to_string(),
         r#"{"first":1,"second":{"first":1,"second":2}}"#.to_string()
     );
+}
+
+#[test]
+fn default_struct_nested() {
+    let abi: ContractAbi = deserialize_abi_from_json(ABI_JSON).unwrap().into();
+
+    let AnyValue::Struct(struct_value) = default_value_for_abi_type("NestedStruct", &abi).unwrap()
+    else {
+        panic!("Expected default value to be a SingleValue::UnsignedNumber")
+    };
+    assert_eq!(struct_value.0.len(), 2);
+
+    let first_field = struct_value.0.get(0).unwrap();
+    assert_eq!(first_field.name, "first");
+    let AnyValue::SingleValue(SingleValue::UnsignedNumber(first_value)) = &first_field.value else {
+        panic!("Expected default value to be a SingleValue::UnsignedNumber")
+    };
+    assert_eq!(*first_value, 0u8.into());
+
+    let second_field = struct_value.0.get(1).unwrap();
+    assert_eq!(second_field.name, "second");
+    let AnyValue::Struct(nested_struct_value) = &second_field.value else {
+        panic!("Expected default value to be a SingleValue::Struct")
+    };
+
+    assert_eq!(nested_struct_value.0.len(), 2);
+
+    let first_nested_field = nested_struct_value.0.get(0).unwrap();
+    let AnyValue::SingleValue(SingleValue::UnsignedNumber(first_nested_value)) =
+        &first_nested_field.value
+    else {
+        panic!("Expected default value to be a SingleValue::UnsignedNumber")
+    };
+    assert_eq!(*first_nested_value, 0u8.into());
+
+    let second_nested_field = nested_struct_value.0.get(1).unwrap();
+    let AnyValue::SingleValue(SingleValue::UnsignedNumber(second_nested_value)) =
+        &second_nested_field.value
+    else {
+        panic!("Expected default value to be a SingleValue::UnsignedNumber")
+    };
+    assert_eq!(*second_nested_value, 0u8.into());
 }
