@@ -93,14 +93,11 @@ fn encode_single_value(
             let AnyValue::SingleValue(value) = input else {
                 return Err(Box::new(EncodeError("expected single value")));
             };
-            let SingleValue::Bytes(value) = value else {
-                return Err(Box::new(EncodeError("expected bytes value")));
+            let SingleValue::String(value) = value else {
+                return Err(Box::new(EncodeError("expected string value")));
             };
 
-            let str_value = String::from_utf8(value.to_vec())
-                .map_err(|_| Box::new(EncodeError("expected utf-8 string value")))?;
-
-            Ok(JsonValue::String(str_value).into())
+            Ok(JsonValue::String(value.to_owned()).into())
         },
         "Address" => {
             let AnyValue::SingleValue(value) = input else {
@@ -125,7 +122,10 @@ fn encode_single_value(
 
             Ok(JsonValue::Bool(value.to_owned()).into())
         },
-        _ => Err(Box::new(EncodeError("unknown type"))),
+        _ => {
+            println!("unknown type: {}", type_name);
+            Err(Box::new(EncodeError("unknown type")))
+        },
     }
 }
 

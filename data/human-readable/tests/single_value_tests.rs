@@ -95,7 +95,7 @@ fn serialize_single_value_string() {
 fn deserialize_single_value_string() {
     let abi: ContractAbi = deserialize_abi_from_json(EMPTY_ABI_JSON).unwrap().into();
 
-    let value = AnyValue::SingleValue(SingleValue::Bytes("hello".as_bytes().to_vec().into()));
+    let value = AnyValue::SingleValue(SingleValue::String("hello".to_owned()));
     let result = encode_human_readable_value(&value, "utf-8 string", &abi).unwrap();
 
     assert_eq!(result.to_string(), "\"hello\"");
