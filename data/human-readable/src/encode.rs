@@ -2,7 +2,7 @@ use std::{error::Error, fmt::Display};
 
 use bech32::ToBase32;
 use multiversx_sc_scenario::multiversx_sc::abi::{
-    ContractAbi, StructFieldDescription, TypeContents, TypeDescription,
+    ContractAbi, EnumVariantDescription, StructFieldDescription, TypeContents, TypeDescription,
 };
 use serde_json::{Map, Value as JsonValue};
 
@@ -34,7 +34,7 @@ pub fn encode_any_value(
 ) -> Result<HumanReadableValue, Box<dyn Error>> {
     match &type_description.contents {
         TypeContents::NotSpecified => encode_single_value(input, type_description.name.as_str()),
-        TypeContents::Enum(_variants) => panic!("not supported"),
+        TypeContents::Enum(variants) => encode_enum(input, &variants, &contract_abi),
         TypeContents::Struct(fields) => encode_struct(input, &fields, &contract_abi),
         TypeContents::ExplicitEnum(_) => panic!("not supported"),
     }
@@ -151,6 +151,77 @@ pub fn encode_struct(
     }
 
     Ok(JsonValue::Object(field_values).into())
+}
+
+pub fn encode_enum(
+    input: &AnyValue,
+    variants: &Vec<EnumVariantDescription>,
+    contract_abi: &ContractAbi,
+) -> Result<HumanReadableValue, Box<dyn Error>> {
+    let AnyValue::Enum(enum_value) = input else {
+        return Err(Box::new(EncodeError("expected enum value")));
+    };
+    let variant = variants
+        .iter()
+        .find(|v| v.discriminant == enum_value.discriminant)
+        .ok_or_else(|| Box::new(EncodeError("missing variant")))?;
+
+    if variant.is_empty_variant() {
+        return Ok(JsonValue::String(variant.name.to_owned()).into());
+    }
+
+    if variant.is_tuple_variant() && variant.fields.len() == 1 {
+        let value = encode_human_readable_value(
+            &enum_value.value,
+            &variant.fields[0].field_type,
+            contract_abi,
+        )?;
+        return Ok(JsonValue::Object(
+            vec![(variant.name.to_owned(), value.get_value().to_owned())]
+                .into_iter()
+                .collect(),
+        )
+        .into());
+    }
+
+    if variant.is_tuple_variant() {
+        let AnyValue::Struct(variant_fields) = &enum_value.value else {
+            return Err(Box::new(EncodeError("expected struct value")));
+        };
+
+        let mut field_values: Vec<JsonValue> = vec![];
+
+        for (field, field_type) in variant.fields.iter().zip(variant_fields.0.iter()) {
+            let value =
+                encode_human_readable_value(&field_type.value, &field.field_type, contract_abi)?;
+            field_values.push(value.get_value().to_owned());
+        }
+
+        return Ok(JsonValue::Object(
+            vec![(variant.name.to_owned(), JsonValue::Array(field_values))]
+                .into_iter()
+                .collect(),
+        )
+        .into());
+    }
+
+    let AnyValue::Struct(variant_fields) = &enum_value.value else {
+        return Err(Box::new(EncodeError("expected struct value")));
+    };
+
+    let mut field_values: Map<String, JsonValue> = Map::new();
+    for (field, field_type) in variant.fields.iter().zip(variant_fields.0.iter()) {
+        let value =
+            encode_human_readable_value(&field_type.value, &field.field_type, contract_abi)?;
+        field_values.insert(field.name.to_owned(), value.get_value().to_owned());
+    }
+
+    Ok(JsonValue::Object(
+        vec![(variant.name.to_owned(), JsonValue::Object(field_values))]
+            .into_iter()
+            .collect(),
+    )
+    .into())
 }
 
 #[derive(Debug)]

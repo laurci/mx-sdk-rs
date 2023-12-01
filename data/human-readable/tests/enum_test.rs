@@ -1,4 +1,7 @@
-use multiversx_sc_codec_human_readable::{decode_human_readable_value, format::HumanReadableValue};
+use multiversx_sc_codec_human_readable::{
+    decode_human_readable_value, encode_human_readable_value, format::HumanReadableValue, AnyValue,
+    EnumVariant, SingleValue, StructField, StructValue,
+};
 use multiversx_sc_meta::abi_json::deserialize_abi_from_json;
 use multiversx_sc_scenario::multiversx_sc::{abi::ContractAbi, codec::top_encode_to_vec_u8};
 
@@ -142,6 +145,19 @@ fn serialize_enum_only_discriminant() {
 }
 
 #[test]
+fn deserialize_enum_only_discriminant() {
+    let abi: ContractAbi = deserialize_abi_from_json(ABI_JSON).unwrap().into();
+
+    let value = AnyValue::Enum(Box::new(EnumVariant {
+        discriminant: 1,
+        value: AnyValue::None,
+    }));
+
+    let result = encode_human_readable_value(&value, "SimpleEnum", &abi).unwrap();
+    assert_eq!(result.to_string(), "\"Second\"");
+}
+
+#[test]
 fn serialize_enum_with_struct() {
     let abi: ContractAbi = deserialize_abi_from_json(ABI_JSON).unwrap().into();
 
@@ -158,6 +174,28 @@ fn serialize_enum_with_struct() {
             0, 0, 0, 1, 2 // second
         ]
     );
+}
+
+#[test]
+fn deserialize_enum_with_struct() {
+    let abi: ContractAbi = deserialize_abi_from_json(ABI_JSON).unwrap().into();
+
+    let value = AnyValue::Enum(Box::new(EnumVariant {
+        discriminant: 1,
+        value: AnyValue::Struct(StructValue(vec![
+            StructField {
+                name: "first".to_owned(),
+                value: AnyValue::SingleValue(SingleValue::UnsignedNumber(1u8.into())),
+            },
+            StructField {
+                name: "second".to_owned(),
+                value: AnyValue::SingleValue(SingleValue::UnsignedNumber(2u8.into())),
+            },
+        ])),
+    }));
+
+    let result = encode_human_readable_value(&value, "EnumWithStruct", &abi).unwrap();
+    assert_eq!(result.to_string(), r#"{"Second":{"first":1,"second":2}}"#);
 }
 
 #[test]
@@ -180,6 +218,28 @@ fn serialize_enum_tuple_with_struct() {
 }
 
 #[test]
+fn deserialize_enum_tuple_with_struct() {
+    let abi: ContractAbi = deserialize_abi_from_json(ABI_JSON).unwrap().into();
+
+    let value = AnyValue::Enum(Box::new(EnumVariant {
+        discriminant: 1,
+        value: AnyValue::Struct(StructValue(vec![
+            StructField {
+                name: "first".to_owned(),
+                value: AnyValue::SingleValue(SingleValue::UnsignedNumber(1u8.into())),
+            },
+            StructField {
+                name: "second".to_owned(),
+                value: AnyValue::SingleValue(SingleValue::UnsignedNumber(2u8.into())),
+            },
+        ])),
+    }));
+
+    let result = encode_human_readable_value(&value, "EnumWithTupleStruct", &abi).unwrap();
+    assert_eq!(result.to_string(), r#"{"Second":{"first":1,"second":2}}"#);
+}
+
+#[test]
 fn serialize_enum_tuple_with_values() {
     let abi: ContractAbi = deserialize_abi_from_json(ABI_JSON).unwrap().into();
 
@@ -195,6 +255,28 @@ fn serialize_enum_tuple_with_values() {
             0, 0, 0, 1, 2 // 1
         ]
     );
+}
+
+#[test]
+fn deserialize_enum_tuple_with_values() {
+    let abi: ContractAbi = deserialize_abi_from_json(ABI_JSON).unwrap().into();
+
+    let value = AnyValue::Enum(Box::new(EnumVariant {
+        discriminant: 1,
+        value: AnyValue::Struct(StructValue(vec![
+            StructField {
+                name: "0".to_owned(),
+                value: AnyValue::SingleValue(SingleValue::UnsignedNumber(1u8.into())),
+            },
+            StructField {
+                name: "1".to_owned(),
+                value: AnyValue::SingleValue(SingleValue::UnsignedNumber(2u8.into())),
+            },
+        ])),
+    }));
+
+    let result = encode_human_readable_value(&value, "EnumWithTupleValues", &abi).unwrap();
+    assert_eq!(result.to_string(), r#"{"Second":[1,2]}"#);
 }
 
 #[test]
@@ -216,5 +298,43 @@ fn serialize_enum_tuple_with_values_and_struct() {
             0, 0, 0, 1, 1, // 2.first
             0, 0, 0, 1, 2 // 2.second
         ]
+    );
+}
+
+#[test]
+fn deserialize_enum_tuple_with_values_and_struct() {
+    let abi: ContractAbi = deserialize_abi_from_json(ABI_JSON).unwrap().into();
+
+    let value = AnyValue::Enum(Box::new(EnumVariant {
+        discriminant: 1,
+        value: AnyValue::Struct(StructValue(vec![
+            StructField {
+                name: "0".to_owned(),
+                value: AnyValue::SingleValue(SingleValue::UnsignedNumber(1u8.into())),
+            },
+            StructField {
+                name: "1".to_owned(),
+                value: AnyValue::SingleValue(SingleValue::UnsignedNumber(2u8.into())),
+            },
+            StructField {
+                name: "2".to_owned(),
+                value: AnyValue::Struct(StructValue(vec![
+                    StructField {
+                        name: "first".to_owned(),
+                        value: AnyValue::SingleValue(SingleValue::UnsignedNumber(1u8.into())),
+                    },
+                    StructField {
+                        name: "second".to_owned(),
+                        value: AnyValue::SingleValue(SingleValue::UnsignedNumber(2u8.into())),
+                    },
+                ])),
+            },
+        ])),
+    }));
+
+    let result = encode_human_readable_value(&value, "EnumWithTupleValuesAndStruct", &abi).unwrap();
+    assert_eq!(
+        result.to_string(),
+        r#"{"Second":[1,2,{"first":1,"second":2}]}"#
     );
 }
