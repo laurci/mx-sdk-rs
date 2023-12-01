@@ -14,6 +14,12 @@ impl FromStr for HumanReadableValue {
     }
 }
 
+impl From<JsonValue> for HumanReadableValue {
+    fn from(value: JsonValue) -> Self {
+        HumanReadableValue { value }
+    }
+}
+
 impl HumanReadableValue {
     pub fn get_value(&self) -> &JsonValue {
         &self.value
@@ -23,5 +29,9 @@ impl HumanReadableValue {
         self.value.get(key).map(|value| HumanReadableValue {
             value: value.clone(),
         })
+    }
+
+    pub fn to_string(&self) -> String {
+        self.value.to_string()
     }
 }

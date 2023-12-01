@@ -163,7 +163,7 @@ pub fn decode_enum(
             .find(|el| el.name == discriminant_name)
             .ok_or_else(|| Box::new(InterpretError("enum variant not found")))?;
 
-        if !variant.is_tuple_variant() {
+        if !variant.is_empty_variant() {
             return Err(Box::new(InterpretError(
                 "enum variant is not a tuple variant",
             )));
@@ -175,7 +175,75 @@ pub fn decode_enum(
         })));
     }
 
-    todo!("non-string discriminants not supported yet");
+    if !input.get_value().is_object() {
+        return Err(Box::new(InterpretError(
+            "expected object or string value for enum",
+        )));
+    }
+
+    let obj_value = input.get_value().as_object().unwrap();
+    if obj_value.keys().len() != 1 {
+        return Err(Box::new(InterpretError(
+            "expected object with single key for enum",
+        )));
+    }
+
+    let discriminant_name = obj_value.keys().next().unwrap().as_str();
+    let variant = variants
+        .iter()
+        .find(|el| el.name == discriminant_name)
+        .ok_or_else(|| Box::new(InterpretError("enum variant not found")))?;
+
+    // handle tuple with only one field as a special case (we don't need a wrapper array)
+    if variant.is_tuple_variant() && variant.fields.len() == 1 {
+        let value = input.child(variant.name.as_str()).unwrap();
+        let value =
+            decode_human_readable_value(&value, &variant.fields[0].field_type, contract_abi)?;
+        return Ok(AnyValue::Enum(Box::new(crate::EnumVariant {
+            discriminant: variant.discriminant,
+            value,
+        })));
+    } else if variant.is_tuple_variant() {
+        let value = input.child(variant.name.as_str()).unwrap();
+        let value = value
+            .get_value()
+            .as_array()
+            .ok_or_else(|| Box::new(InterpretError("expected array for enum tuple variant")))?;
+
+        if value.len() != variant.fields.len() {
+            return Err(Box::new(InterpretError(
+                "expected array with the same length as the tuple variant fields",
+            )));
+        }
+
+        let mut field_values: Vec<StructField> = vec![];
+        for (i, field) in variant.fields.iter().enumerate() {
+            let value = value.get(i).unwrap();
+            let value = decode_human_readable_value(
+                &(value.to_owned().into()),
+                &field.field_type,
+                &contract_abi,
+            )?;
+            field_values.push(StructField {
+                name: field.name.clone(),
+                value,
+            });
+        }
+
+        return Ok(AnyValue::Enum(Box::new(crate::EnumVariant {
+            discriminant: variant.discriminant,
+            value: AnyValue::Struct(StructValue(field_values)),
+        })));
+    }
+
+    // is not empty and is not a tuple so just try to parse a struct from the fields
+    let value = input.child(variant.name.as_str()).unwrap();
+    let value = decode_struct(&value, &variant.fields, contract_abi)?;
+
+    Ok(AnyValue::Enum(Box::new(crate::EnumVariant {
+        discriminant: variant.discriminant,
+        value,
+    })))
 }
 
 #[derive(Debug)]
