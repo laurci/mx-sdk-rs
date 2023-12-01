@@ -1,7 +1,7 @@
 use bech32::FromBase32;
 use multiversx_sc_codec_human_readable::{
-    decode_human_readable_value, encode_human_readable_value, format::HumanReadableValue, AnyValue,
-    SingleValue,
+    decode_human_readable_value, default_value_for_abi_type, encode_human_readable_value,
+    format::HumanReadableValue, AnyValue, SingleValue,
 };
 use multiversx_sc_meta::abi_json::deserialize_abi_from_json;
 use multiversx_sc_scenario::multiversx_sc::{abi::ContractAbi, codec::top_encode_to_vec_u8};
@@ -149,4 +149,54 @@ fn deserialize_single_value_address() {
     let result = encode_human_readable_value(&value, "Address", &abi).unwrap();
 
     assert_eq!(result.to_string(), format!("\"{}\"", TEST_ADDRESS));
+}
+
+#[test]
+fn default_single_values() {
+    let abi: ContractAbi = deserialize_abi_from_json(EMPTY_ABI_JSON).unwrap().into();
+
+    let AnyValue::SingleValue(SingleValue::UnsignedNumber(default_u32)) =
+        default_value_for_abi_type("u32", &abi).unwrap()
+    else {
+        panic!("Expected default value to be a SingleValue::UnsignedNumber")
+    };
+    assert_eq!(default_u32, 0u32.into());
+
+    let AnyValue::SingleValue(SingleValue::SignedNumber(default_i32)) =
+        default_value_for_abi_type("i32", &abi).unwrap()
+    else {
+        panic!("Expected default value to be a SingleValue::SignedNumber")
+    };
+    assert_eq!(default_i32, 0u32.into());
+
+    let AnyValue::SingleValue(SingleValue::Bytes(default_buffer)) =
+        default_value_for_abi_type("ManagedBuffer", &abi).unwrap()
+    else {
+        panic!("Expected default value to be a SingleValue::Bytes")
+    };
+    assert_eq!(default_buffer.len(), 0);
+
+    let AnyValue::SingleValue(SingleValue::String(default_string)) =
+        default_value_for_abi_type("utf-8 string", &abi).unwrap()
+    else {
+        panic!("Expected default value to be a SingleValue::String")
+    };
+    assert_eq!(default_string, "".to_string());
+
+    let AnyValue::SingleValue(SingleValue::Bytes(default_address)) =
+        default_value_for_abi_type("Address", &abi).unwrap()
+    else {
+        panic!("Expected default value to be a SingleValue::Bytes")
+    };
+    assert_eq!(default_address.len(), 32);
+    for byte in default_address.iter() {
+        assert_eq!(*byte, 0);
+    }
+
+    let AnyValue::SingleValue(SingleValue::Bool(default_bool)) =
+        default_value_for_abi_type("bool", &abi).unwrap()
+    else {
+        panic!("Expected default value to be a SingleValue::Bool")
+    };
+    assert_eq!(default_bool, false);
 }
