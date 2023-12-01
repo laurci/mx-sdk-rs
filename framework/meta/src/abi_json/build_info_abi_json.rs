@@ -78,7 +78,7 @@ impl From<&ContractCrateBuildAbi> for ContractCrateBuildAbiJson {
 }
 
 impl From<&ContractCrateBuildAbiJson> for ContractCrateBuildAbi {
-    fn from(abi: &ContractCrateBuildAbiJson) -> Self {
+    fn from(_abi: &ContractCrateBuildAbiJson) -> Self {
         // TODO: @Laur the abi struct should probably just own the strings
         let name: &'static str = "";
         let version: &'static str = "";
@@ -114,7 +114,7 @@ impl From<&FrameworkBuildAbi> for FrameworkBuildAbiJson {
 }
 
 impl From<&FrameworkBuildAbiJson> for FrameworkBuildAbi {
-    fn from(abi: &FrameworkBuildAbiJson) -> Self {
+    fn from(_abi: &FrameworkBuildAbiJson) -> Self {
         // TODO: @Laur the abi struct should probably just own the strings
         let name: &'static str = "";
         let version: &'static str = "";

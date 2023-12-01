@@ -1,7 +1,7 @@
+mod decode;
 pub mod format;
-mod interpret;
 mod value;
 
-pub use interpret::*;
+pub use decode::*;
 use multiversx_sc_scenario::multiversx_sc;
 pub use value::*;
