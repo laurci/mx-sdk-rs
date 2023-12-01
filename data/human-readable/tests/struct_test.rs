@@ -1,4 +1,7 @@
-use multiversx_sc_codec_human_readable::{decode_human_readable_value, format::HumanReadableValue};
+use multiversx_sc_codec_human_readable::{
+    decode_human_readable_value, encode_human_readable_value, format::HumanReadableValue, AnyValue,
+    SingleValue, StructField, StructValue,
+};
 use multiversx_sc_meta::abi_json::deserialize_abi_from_json;
 use multiversx_sc_scenario::multiversx_sc::{abi::ContractAbi, codec::top_encode_to_vec_u8};
 
@@ -56,11 +59,30 @@ fn serialize_struct_two_u8s() {
 }
 
 #[test]
+fn deserialize_struct_two_u8s() {
+    let abi: ContractAbi = deserialize_abi_from_json(ABI_JSON).unwrap().into();
+
+    let value = AnyValue::Struct(StructValue(vec![
+        StructField {
+            name: "first".to_string(),
+            value: AnyValue::SingleValue(SingleValue::UnsignedNumber(1u8.into())),
+        },
+        StructField {
+            name: "second".to_string(),
+            value: AnyValue::SingleValue(SingleValue::UnsignedNumber(2u8.into())),
+        },
+    ]));
+
+    let result = encode_human_readable_value(&value, "TwoU8s", &abi).unwrap();
+    assert_eq!(result.to_string(), r#"{"first":1,"second":2}"#.to_string());
+}
+
+#[test]
 fn serialize_struct_nested() {
     let abi: ContractAbi = deserialize_abi_from_json(ABI_JSON).unwrap().into();
 
     let value = r#"{
-        "first": 12,
+        "first": 1,
         "second": {
             "first": 1,
             "second": 2
@@ -74,9 +96,40 @@ fn serialize_struct_nested() {
     assert_eq!(
         serialized,
         vec![
-            0, 0, 0, 1, 12, // first
+            0, 0, 0, 1, 1, // first
             0, 0, 0, 1, 1, // second.first
             0, 0, 0, 1, 2 // second.second
         ]
+    );
+}
+
+#[test]
+fn deserialize_struct_nested() {
+    let abi: ContractAbi = deserialize_abi_from_json(ABI_JSON).unwrap().into();
+
+    let value = AnyValue::Struct(StructValue(vec![
+        StructField {
+            name: "first".to_string(),
+            value: AnyValue::SingleValue(SingleValue::UnsignedNumber(1u8.into())),
+        },
+        StructField {
+            name: "second".to_string(),
+            value: AnyValue::Struct(StructValue(vec![
+                StructField {
+                    name: "first".to_string(),
+                    value: AnyValue::SingleValue(SingleValue::UnsignedNumber(1u8.into())),
+                },
+                StructField {
+                    name: "second".to_string(),
+                    value: AnyValue::SingleValue(SingleValue::UnsignedNumber(2u8.into())),
+                },
+            ])),
+        },
+    ]));
+
+    let result = encode_human_readable_value(&value, "NestedStruct", &abi).unwrap();
+    assert_eq!(
+        result.to_string(),
+        r#"{"first":1,"second":{"first":1,"second":2}}"#.to_string()
     );
 }

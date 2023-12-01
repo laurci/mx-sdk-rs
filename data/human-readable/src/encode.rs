@@ -1,8 +1,10 @@
 use std::{error::Error, fmt::Display};
 
 use bech32::ToBase32;
-use multiversx_sc_scenario::multiversx_sc::abi::{ContractAbi, TypeContents, TypeDescription};
-use serde_json::Value as JsonValue;
+use multiversx_sc_scenario::multiversx_sc::abi::{
+    ContractAbi, StructFieldDescription, TypeContents, TypeDescription,
+};
+use serde_json::{Map, Value as JsonValue};
 
 use crate::{format::HumanReadableValue, AnyValue, SingleValue};
 
@@ -32,8 +34,8 @@ pub fn encode_any_value(
 ) -> Result<HumanReadableValue, Box<dyn Error>> {
     match &type_description.contents {
         TypeContents::NotSpecified => encode_single_value(input, type_description.name.as_str()),
-        TypeContents::Enum(variants) => panic!("not supported"),
-        TypeContents::Struct(fields) => panic!("not supported"),
+        TypeContents::Enum(_variants) => panic!("not supported"),
+        TypeContents::Struct(fields) => encode_struct(input, &fields, &contract_abi),
         TypeContents::ExplicitEnum(_) => panic!("not supported"),
     }
 }
@@ -125,6 +127,30 @@ fn encode_single_value(
         },
         _ => Err(Box::new(EncodeError("unknown type"))),
     }
+}
+
+pub fn encode_struct(
+    input: &AnyValue,
+    fields: &Vec<StructFieldDescription>,
+    contract_abi: &ContractAbi,
+) -> Result<HumanReadableValue, Box<dyn Error>> {
+    let AnyValue::Struct(struct_value) = input else {
+        return Err(Box::new(EncodeError("expected struct value")));
+    };
+    let mut struct_fields = struct_value.0.iter();
+
+    let mut field_values: Map<String, JsonValue> = Map::new();
+
+    for field in fields.iter() {
+        let value = struct_fields
+            .find(|f| f.name == field.name)
+            .ok_or_else(|| Box::new(EncodeError("missing field")))?;
+
+        let value = encode_human_readable_value(&value.value, &field.field_type, contract_abi)?;
+        field_values.insert(field.name.to_owned(), value.get_value().to_owned());
+    }
+
+    Ok(JsonValue::Object(field_values).into())
 }
 
 #[derive(Debug)]
