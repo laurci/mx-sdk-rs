@@ -32,8 +32,12 @@ const ABI_JSON: &str = r#"{
                     "discriminant": 0,
                     "fields": [
                         {
-                            "name": "test",
+                            "name": "first",
                             "type": "utf-8 string"
+                        },
+                        {
+                            "name": "second",
+                            "type": "TwoU8s"
                         }
                     ]
                 },
