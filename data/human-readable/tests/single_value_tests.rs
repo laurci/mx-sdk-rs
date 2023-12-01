@@ -1,5 +1,8 @@
 use bech32::FromBase32;
-use multiversx_sc_codec_human_readable::{decode_human_readable_value, format::HumanReadableValue};
+use multiversx_sc_codec_human_readable::{
+    decode_human_readable_value, encode_human_readable_value, format::HumanReadableValue, AnyValue,
+    SingleValue,
+};
 use multiversx_sc_meta::abi_json::deserialize_abi_from_json;
 use multiversx_sc_scenario::multiversx_sc::{abi::ContractAbi, codec::top_encode_to_vec_u8};
 
@@ -26,6 +29,16 @@ fn serialize_single_value_unsigned() {
 }
 
 #[test]
+fn deserialize_single_value_unsigned() {
+    let abi: ContractAbi = deserialize_abi_from_json(EMPTY_ABI_JSON).unwrap().into();
+
+    let value = AnyValue::SingleValue(SingleValue::UnsignedNumber(1234u16.into()));
+    let result = encode_human_readable_value(&value, "u32", &abi).unwrap();
+
+    assert_eq!(result.to_string(), "1234");
+}
+
+#[test]
 fn serialize_single_value_signed() {
     let abi: ContractAbi = deserialize_abi_from_json(EMPTY_ABI_JSON).unwrap().into();
 
@@ -34,6 +47,16 @@ fn serialize_single_value_signed() {
     let result = decode_human_readable_value(&value, "i32", &abi).unwrap();
     let serialized = top_encode_to_vec_u8(&result).unwrap();
     assert_eq!(serialized, (-1234 as i16).to_be_bytes().to_vec()); // should take only 2 bytes (top encoded)
+}
+
+#[test]
+fn deserialize_single_value_signed() {
+    let abi: ContractAbi = deserialize_abi_from_json(EMPTY_ABI_JSON).unwrap().into();
+
+    let value = AnyValue::SingleValue(SingleValue::SignedNumber((-1234 as i16).into()));
+    let result = encode_human_readable_value(&value, "i32", &abi).unwrap();
+
+    assert_eq!(result.to_string(), "-1234");
 }
 
 #[test]
@@ -48,6 +71,16 @@ fn serialize_single_value_managed_buffer() {
 }
 
 #[test]
+fn deserialize_single_value_managed_buffer() {
+    let abi: ContractAbi = deserialize_abi_from_json(EMPTY_ABI_JSON).unwrap().into();
+
+    let value = AnyValue::SingleValue(SingleValue::Bytes(vec![0x1, 0x2, 0x3].into()));
+    let result = encode_human_readable_value(&value, "ManagedBuffer", &abi).unwrap();
+
+    assert_eq!(result.to_string(), "[1,2,3]");
+}
+
+#[test]
 fn serialize_single_value_string() {
     let abi: ContractAbi = deserialize_abi_from_json(EMPTY_ABI_JSON).unwrap().into();
 
@@ -59,6 +92,16 @@ fn serialize_single_value_string() {
 }
 
 #[test]
+fn deserialize_single_value_string() {
+    let abi: ContractAbi = deserialize_abi_from_json(EMPTY_ABI_JSON).unwrap().into();
+
+    let value = AnyValue::SingleValue(SingleValue::Bytes("hello".as_bytes().to_vec().into()));
+    let result = encode_human_readable_value(&value, "utf-8 string", &abi).unwrap();
+
+    assert_eq!(result.to_string(), "\"hello\"");
+}
+
+#[test]
 fn serialize_single_value_bool() {
     let abi: ContractAbi = deserialize_abi_from_json(EMPTY_ABI_JSON).unwrap().into();
 
@@ -67,6 +110,16 @@ fn serialize_single_value_bool() {
     let result = decode_human_readable_value(&value, "bool", &abi).unwrap();
     let serialized = top_encode_to_vec_u8(&result).unwrap();
     assert_eq!(serialized, vec![1]);
+}
+
+#[test]
+fn deserialize_single_value_bool() {
+    let abi: ContractAbi = deserialize_abi_from_json(EMPTY_ABI_JSON).unwrap().into();
+
+    let value = AnyValue::SingleValue(SingleValue::Bool(true.into()));
+    let result = encode_human_readable_value(&value, "bool", &abi).unwrap();
+
+    assert_eq!(result.to_string(), "true");
 }
 
 #[test]
@@ -84,4 +137,16 @@ fn serialize_single_value_address() {
     let address_bytes = Vec::<u8>::from_base32(&address_bytes).unwrap();
 
     assert_eq!(serialized, address_bytes);
+}
+
+#[test]
+fn deserialize_single_value_address() {
+    let abi: ContractAbi = deserialize_abi_from_json(EMPTY_ABI_JSON).unwrap().into();
+    let (_, address_bytes, _) = bech32::decode(TEST_ADDRESS).unwrap();
+    let address_bytes = Vec::<u8>::from_base32(&address_bytes).unwrap();
+
+    let value = AnyValue::SingleValue(SingleValue::Bytes(address_bytes.into()));
+    let result = encode_human_readable_value(&value, "Address", &abi).unwrap();
+
+    assert_eq!(result.to_string(), format!("\"{}\"", TEST_ADDRESS));
 }

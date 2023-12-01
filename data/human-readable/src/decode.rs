@@ -54,7 +54,7 @@ fn decode_single_value(
             let number_value = input
                 .get_value()
                 .as_number()
-                .ok_or_else(|| Box::new(InterpretError("expected unsigned number value")))?;
+                .ok_or_else(|| Box::new(DecodeError("expected unsigned number value")))?;
 
             let value = number_value.to_string().parse::<BigUint>()?;
             Ok(AnyValue::SingleValue(SingleValue::UnsignedNumber(value)))
@@ -63,7 +63,7 @@ fn decode_single_value(
             let number_value = input
                 .get_value()
                 .as_number()
-                .ok_or_else(|| Box::new(InterpretError("expected number value")))?;
+                .ok_or_else(|| Box::new(DecodeError("expected number value")))?;
 
             let value = number_value.to_string().parse::<BigInt>()?;
             Ok(AnyValue::SingleValue(SingleValue::SignedNumber(value)))
@@ -72,15 +72,15 @@ fn decode_single_value(
             let array_value = input
                 .get_value()
                 .as_array()
-                .ok_or_else(|| Box::new(InterpretError("expected bytes value")))?;
+                .ok_or_else(|| Box::new(DecodeError("expected bytes value")))?;
 
             let mut bytes = vec![0u8; array_value.len()];
             for (i, value) in array_value.iter().enumerate() {
                 let number_value = value
                     .as_u64()
-                    .ok_or_else(|| Box::new(InterpretError("expected byte value")))?;
+                    .ok_or_else(|| Box::new(DecodeError("expected byte value")))?;
                 if number_value > 255 {
-                    return Err(Box::new(InterpretError("expected byte value")));
+                    return Err(Box::new(DecodeError("expected byte value")));
                 }
                 bytes[i] = number_value as u8;
             }
@@ -91,7 +91,7 @@ fn decode_single_value(
             let str_value = input
                 .get_value()
                 .as_str()
-                .ok_or_else(|| Box::new(InterpretError("expected string value")))?;
+                .ok_or_else(|| Box::new(DecodeError("expected string value")))?;
 
             Ok(AnyValue::SingleValue(SingleValue::String(
                 str_value.to_string(),
@@ -101,15 +101,15 @@ fn decode_single_value(
             let str_value = input
                 .get_value()
                 .as_str()
-                .ok_or_else(|| Box::new(InterpretError("expected string value")))?;
+                .ok_or_else(|| Box::new(DecodeError("expected string value")))?;
 
             let (_, address_bytes_u5, _) = bech32::decode(str_value)
-                .map_err(|_| Box::new(InterpretError("failed to parse address")))?;
+                .map_err(|_| Box::new(DecodeError("failed to parse address")))?;
             let address_bytes = Vec::<u8>::from_base32(&address_bytes_u5)
-                .map_err(|_| Box::new(InterpretError("failed to parse address")))?;
+                .map_err(|_| Box::new(DecodeError("failed to parse address")))?;
 
             if address_bytes.len() != 32 {
-                return Err(Box::new(InterpretError(
+                return Err(Box::new(DecodeError(
                     "Invalid address length after decoding",
                 )));
             }
@@ -122,11 +122,11 @@ fn decode_single_value(
             let bool_value = input
                 .get_value()
                 .as_bool()
-                .ok_or_else(|| Box::new(InterpretError("expected bool value")))?;
+                .ok_or_else(|| Box::new(DecodeError("expected bool value")))?;
 
             Ok(AnyValue::SingleValue(SingleValue::Bool(bool_value.into())))
         },
-        _ => Err(Box::new(InterpretError("unknown type"))),
+        _ => Err(Box::new(DecodeError("unknown type"))),
     }
 }
 
@@ -140,7 +140,7 @@ pub fn decode_struct(
     for field in fields.iter() {
         let value = input
             .child(&field.name)
-            .ok_or_else(|| Box::new(InterpretError("missing field")))?;
+            .ok_or_else(|| Box::new(DecodeError("missing field")))?;
         let value = decode_human_readable_value(&value, &field.field_type, &contract_abi)?;
         field_values.push(StructField {
             name: field.name.clone(),
@@ -161,12 +161,10 @@ pub fn decode_enum(
         let variant = variants
             .iter()
             .find(|el| el.name == discriminant_name)
-            .ok_or_else(|| Box::new(InterpretError("enum variant not found")))?;
+            .ok_or_else(|| Box::new(DecodeError("enum variant not found")))?;
 
         if !variant.is_empty_variant() {
-            return Err(Box::new(InterpretError(
-                "enum variant is not a tuple variant",
-            )));
+            return Err(Box::new(DecodeError("enum variant is not a tuple variant")));
         }
 
         return Ok(AnyValue::Enum(Box::new(crate::EnumVariant {
@@ -176,14 +174,14 @@ pub fn decode_enum(
     }
 
     if !input.get_value().is_object() {
-        return Err(Box::new(InterpretError(
+        return Err(Box::new(DecodeError(
             "expected object or string value for enum",
         )));
     }
 
     let obj_value = input.get_value().as_object().unwrap();
     if obj_value.keys().len() != 1 {
-        return Err(Box::new(InterpretError(
+        return Err(Box::new(DecodeError(
             "expected object with single key for enum",
         )));
     }
@@ -192,7 +190,7 @@ pub fn decode_enum(
     let variant = variants
         .iter()
         .find(|el| el.name == discriminant_name)
-        .ok_or_else(|| Box::new(InterpretError("enum variant not found")))?;
+        .ok_or_else(|| Box::new(DecodeError("enum variant not found")))?;
 
     // handle tuple with only one field as a special case (we don't need a wrapper array)
     if variant.is_tuple_variant() && variant.fields.len() == 1 {
@@ -208,10 +206,10 @@ pub fn decode_enum(
         let value = value
             .get_value()
             .as_array()
-            .ok_or_else(|| Box::new(InterpretError("expected array for enum tuple variant")))?;
+            .ok_or_else(|| Box::new(DecodeError("expected array for enum tuple variant")))?;
 
         if value.len() != variant.fields.len() {
-            return Err(Box::new(InterpretError(
+            return Err(Box::new(DecodeError(
                 "expected array with the same length as the tuple variant fields",
             )));
         }
@@ -247,12 +245,12 @@ pub fn decode_enum(
 }
 
 #[derive(Debug)]
-pub struct InterpretError(&'static str);
+pub struct DecodeError(&'static str);
 
-impl Display for InterpretError {
+impl Display for DecodeError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.0.fmt(f)
     }
 }
 
-impl Error for InterpretError {}
+impl Error for DecodeError {}
