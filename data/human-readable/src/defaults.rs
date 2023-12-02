@@ -101,7 +101,7 @@ pub fn default_value_for_enum(
         })));
     } else if variant.is_tuple_variant() {
         let mut field_values: Vec<StructField> = vec![];
-        for (i, field) in variant.fields.iter().enumerate() {
+        for field in variant.fields.iter() {
             let value = default_value_for_abi_type(&field.field_type, &contract_abi)?;
             field_values.push(StructField {
                 name: field.name.clone(),
